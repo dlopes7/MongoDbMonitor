@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Require-Bundle: com.dynatrace.diagnostics.sdk
+Bundle-Vendor: David Lopes
+Bundle-ClassPath: .,lib/com.dynatrace.diagnostics.sdk.jar,lib/json-201
+ 40107.jar,lib/mongo-java-driver-2.13.0.jar
+Bundle-Version: 1.0.0
+Bundle-Name: Mongo DB Monitor
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: com.cnova.mongodbmonitor;singleton:=true
+

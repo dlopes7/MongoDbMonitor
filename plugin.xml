@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<!-- plugin.xml file written by dynaTrace Client 6.1.0 -->
+<plugin>
+  <extension point="com.dynatrace.diagnostics.pdk.pluginconfig" id="com.cnova.mongodbmonitor" name="Mongo DB Monitor">
+    <information>
+      <category value="" />
+      <displayname value="Mongo DB Monitor" />
+      <description value="Pulls metrics from Mongo;" />
+      <supportlevel value="unsupported" />
+    </information>
+    <configuration>
+      <property key="port" label="Port" type="long" description="The server port" default="27017" />
+      <property key="user" label="User" type="string" description="Username with cluster admin access" default="admin" multiline="false" />
+      <property key="password" label="Password" type="password" description="User password" default="" />
+    </configuration>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitor" id="com.cnova.mongodb.monitor" name="MongoDB Remote Monitor">
+    <plugin configid="com.cnova.mongodbmonitor" class="com.cnova.MongoDBMonitor" />
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.connections.Connections" name="Connections">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Current Connections" unit="number" description="Total number of current clients that connect to the database instance." />
+      <metric defaultrate="purepath" name="Available Connections" unit="number" description="Total number of unused connections available for new clients." />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.Memoria" name="Memoria">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Resident" unit="megabytes" description="The value of resident is roughly equivalent to the amount of RAM, in megabytes (MB), currently used by the database process. In normal use this value tends to grow. In dedicated database servers this number tends to approach the total amount of system memory." />
+      <metric defaultrate="purepath" name="Virtual" unit="megabytes" description="Displays the quantity, in megabytes (MB), of virtual memory used by the mongod process. With journaling enabled, the value of virtual is at least twice the value of mapped.&#xA;" />
+      <metric defaultrate="purepath" name="Mapped" unit="megabytes" description="The value of mapped provides the amount of mapped memory, in megabytes (MB), by the database. Because MongoDB uses memory-mapped files, this value is likely to be to be roughly equivalent to the total size of your database or databases.&#xA;" />
+      <metric defaultrate="purepath" name="Mapped With Journal" unit="megabytes" description="mappedWithJournal provides the amount of mapped memory, in megabytes (MB), including the memory used for journaling. This value will always be twice the value of mapped. This field is only included if journaling is enabled." />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.Operations" name="Operations">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Insert" unit="number" description="Provides a counter of the total number of insert operations after each poll." />
+      <metric defaultrate="purepath" name="Query" unit="number" description="The number of query operations" />
+      <metric defaultrate="purepath" name="Update" unit="number" description="The number of update operations" />
+      <metric defaultrate="purepath" name="Delete" unit="number" description="The number of delete operations per second." />
+      <metric defaultrate="purepath" name="Get More" unit="number" description="The number of get more (i.e. cursor batch) operations per second." />
+      <metric defaultrate="purepath" name="Command" unit="number" description="The number of commands per second. On slave and secondary systems, mongostat presents two values separated by a pipe character (e.g. |), in the form of local|replicated commands." />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.OperationRepl" name="Replication Operations">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Insert" unit="number" description="Provides a counter of the total number of insert operations after each poll." />
+      <metric defaultrate="purepath" name="Query" unit="number" description="The number of query operations" />
+      <metric defaultrate="purepath" name="Update" unit="number" description="The number of update operations" />
+      <metric defaultrate="purepath" name="Get More" unit="number" description="The number of get more (i.e. cursor batch) operations" />
+      <metric defaultrate="purepath" name="Command" unit="number" description="The number of commands. On slave and secondary systems, mongostat presents two values separated by a pipe character (e.g. |), in the form of local|replicated commands." />
+      <metric defaultrate="purepath" name="Delete" unit="number" description="The number of delete operations." />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.metricgroup5" name="Database Status">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Collections" unit="number" description="Contains a count of the number of collections in that database." />
+      <metric defaultrate="purepath" name="Objects" unit="number" description="Contains a count of the number of objects (i.e. documents) in the database across all collections." />
+      <metric defaultrate="purepath" name="Data Size" unit="bytes" description="The total size in bytes of the data held in this database including the padding factor. The scale argument affects this value. The dataSize will not decrease when documents shrink, but will decrease when you remove documents." />
+      <metric defaultrate="purepath" name="Storage Size" unit="bytes" description="The total amount of space in bytes allocated to collections in this database for document storage. The scale argument affects this value. The storageSize does not decrease as you remove or shrink documents." />
+      <metric defaultrate="purepath" name="Extents" unit="number" description="Contains a count of the number of extents in the database across all collections." />
+      <metric defaultrate="purepath" name="Indexes" unit="number" description="Contains a count of the total number of indexes across all collections in the database." />
+      <metric defaultrate="purepath" name="Index Size" unit="bytes" description="The total size in bytes of all indexes created on this database. The scale arguments affects this value." />
+      <metric defaultrate="purepath" name="File Size" unit="bytes" description="The total size in bytes of the data files that hold the database. This value includes preallocated space and the padding factor. The value of fileSize only reflects the size of the data files for the database and not the namespace file.&#xA;" />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.ReplicaSetStatus" name="Replica Set Status">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="State" unit="number" description="0: STARTUP, 1: PRIMARY, 2: SECONDARY, 3: RECOVERING, 5: STARTUP2, 6: UNKNOWN, 7: ARBITER, 8: DOWN, 9: ROLLBACK, 10: REMOVED" />
+    </metricgroup>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.monitormetricgroup" id="com.cnova.mongodb.monitor.Network" name="Network">
+    <metricgroup monitorid="com.cnova.mongodb.monitor">
+      <metric defaultrate="purepath" name="Bytes In" unit="bytes" description="The value of the bytesIn field reflects the amount of network traffic, in bytes, received by this database. " />
+      <metric defaultrate="purepath" name="Bytes Out" unit="bytes" description="The value of the bytesOut field reflects the amount of network traffic, in bytes, sent from this database." />
+      <metric defaultrate="purepath" name="Requests" unit="number" description="The numRequests field is a counter of the total number of distinct requests that the server has received." />
+    </metricgroup>
+  </extension>
+</plugin>
+
