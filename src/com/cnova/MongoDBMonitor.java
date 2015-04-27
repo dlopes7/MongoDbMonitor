@@ -8,14 +8,11 @@
 package com.cnova;
 
 
+import com.cnova.stats.DatabaseStats;
+import com.cnova.stats.ServerStats;
 import com.dynatrace.diagnostics.pdk.*;
 import com.mongodb.DB;
-import com.mongodb.MongoCredential;
-import com.mongodb.CommandResult;
-import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.ServerAddress;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -23,11 +20,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.OutputStreamWriter;
-import java.net.UnknownHostException;
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.Collection;
 import java.util.HashMap;
+
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,66 +39,21 @@ public class MongoDBMonitor implements Monitor {
 	private static final String CONFIG_PORT = "port";
 	private static final String CONFIG_USERNAME = "user";
 	private static final String CONFIG_PASSWORD = "password";
-	private static final String[] MEASURE_GROUPS = new String [] {
-		"Connections",
-		"Memoria",
-		"Operations",
-		"Replication Operations",
-		"Database Status",
-		"Network"
-	};
+
 	
-	private Map<String, String> MSR_CONNECTIONS = new HashMap<String, String>();
-	private Map<String, String> MSR_MEMORIA = new HashMap<String, String>();
-	private Map<String, String> MSR_OPERATIONS = new HashMap<String, String>();
-	private Map<String, String> MSR_OPERATIONS_REPL = new HashMap<String, String>();
-	private Map<String, String> MSR_DATABASE_STATUS = new HashMap<String, String>();
-	private Map<String, String> MSR_NETWORK = new HashMap<String, String>();
+	private Map<String, Double> MSR_SERVER = new HashMap<String, Double>();
+	private Map<String, Double> MSR_DATABASE = new HashMap<String, Double>();
+
 	
 	private MongoClient mongoClient;
 	private String user;
 	private String pass;
 	private String host;
 	private int port;
+	Connection connectionAdmin = null;
 	
 	@Override
 	public Status setup(MonitorEnvironment env) throws Exception {
-		MSR_CONNECTIONS.put("Current Connections", "current");
-		MSR_CONNECTIONS.put("Available Connections", "available");
-		MSR_CONNECTIONS.put("Total Created", "totalCreated");
-		
-		MSR_MEMORIA.put("Resident", "resident");
-		MSR_MEMORIA.put("Virtual", "virtual");
-		MSR_MEMORIA.put("Mapped", "mapped");
-		MSR_MEMORIA.put("Mapped With Journal", "mappedWithJournal");
-		
-		MSR_OPERATIONS.put("Insert", "insert");
-		MSR_OPERATIONS.put("Query", "query");
-		MSR_OPERATIONS.put("Update", "update");
-		MSR_OPERATIONS.put("Delete", "delete");
-		MSR_OPERATIONS.put("Get More", "getmore");
-		MSR_OPERATIONS.put("Command", "command");
-		
-		MSR_OPERATIONS_REPL.put("Insert", "insert");
-		MSR_OPERATIONS_REPL.put("Query", "query");
-		MSR_OPERATIONS_REPL.put("Update", "update");
-		MSR_OPERATIONS_REPL.put("Delete", "delete");
-		MSR_OPERATIONS_REPL.put("Get More", "getmore");
-		MSR_OPERATIONS_REPL.put("Command", "command");
-		
-		MSR_DATABASE_STATUS.put("Collections", "collections");
-		MSR_DATABASE_STATUS.put("Objects", "objects");
-		MSR_DATABASE_STATUS.put("Data Size", "dataSize");
-		MSR_DATABASE_STATUS.put("Storage Size","storageSize");
-		MSR_DATABASE_STATUS.put("Extents", "numExtents");
-		MSR_DATABASE_STATUS.put("Indexes", "indexes");
-		MSR_DATABASE_STATUS.put("Index Size", "indexSize");
-		MSR_DATABASE_STATUS.put("File Size","fileSize");
-		MSR_DATABASE_STATUS.put("Namespace Size MB", "nsSizeMB");
-		
-		MSR_NETWORK.put("Bytes In", "bytesIn");
-		MSR_NETWORK.put("Bytes Out", "bytesOut");
-		MSR_NETWORK.put("Requests", "numRequests");
 
 		return new Status(Status.StatusCode.Success);
 	}
@@ -116,119 +67,118 @@ public class MongoDBMonitor implements Monitor {
 		host = env.getHost().getAddress();
 		port = Integer.parseInt(String.valueOf(env.getConfigLong(CONFIG_PORT)));
 		
-		log.warning("Connecting to mongo on " + env.getHost().getAddress() + "\n\n");
-		Connection connectionAdmin = new Connection(host, port, user, pass, "admin");
+		log.warning("Connecting to mongo on " + env.getHost().getAddress() );
+		connectionAdmin = new Connection(host, port, user, pass, "admin");
 		DB db = connectionAdmin.connectToAdminDB(); 
 
 		
-		//Actual execution of the commands happen here
+		//Executes "serverStatus" on the Mongo server
 		JSONObject resultadoServerStatus = new JSONObject(db.command("serverStatus"));
+		ServerStats serverStats = new ServerStats();
+		serverStats.populateMetrics(resultadoServerStatus);
+		
+		//Populate the map with the values
+		MSR_SERVER.put("Current Connections", serverStats.getCurrentConnections());
+		MSR_SERVER.put("Available Connections", serverStats.getAvailableConnections());
+		MSR_SERVER.put("Total Created", serverStats.getTotalCreatedConnections());
+		
+		MSR_SERVER.put("Resident", serverStats.getResidentMemory());
+		MSR_SERVER.put("Virtual", serverStats.getVirtualMemory());
+		MSR_SERVER.put("Mapped", serverStats.getMappedMemory());
+		MSR_SERVER.put("Mapped With Journal", serverStats.getMappedWithJournalMemory());
+		
+		MSR_SERVER.put("Insert", serverStats.getInsertOperations());
+		MSR_SERVER.put("Query", serverStats.getQueryOperations());
+		MSR_SERVER.put("Update", serverStats.getUpdateOperations());
+		MSR_SERVER.put("Delete", serverStats.getDeleteOperations());
+		MSR_SERVER.put("Get More", serverStats.getGetmoreOperations());
+		MSR_SERVER.put("Command", serverStats.getCommandOperations());
+		
+		MSR_SERVER.put("Insert Replications", serverStats.getInsertReplications());
+		MSR_SERVER.put("Query Replications", serverStats.getQueryReplications());
+		MSR_SERVER.put("Update Replications", serverStats.getUpdateReplications());
+		MSR_SERVER.put("Delete Replications", serverStats.getDeleteReplications());
+		MSR_SERVER.put("Get More Replications", serverStats.getGetmoreReplications());
+		MSR_SERVER.put("Command Replications", serverStats.getCommandReplications());
+		
+		MSR_SERVER.put("Bytes In", serverStats.getBytesIn());
+		MSR_SERVER.put("Bytes Out", serverStats.getBytesOut());
+		MSR_SERVER.put("Requests", serverStats.getNumRequests());
+		
+		//Executes "dbStats" on the Mongo server
 		JSONObject resultadoDBStats = new JSONObject(db.command("dbStats"));
+		DatabaseStats databaseStats = new DatabaseStats();
+		databaseStats.populateMetrics(resultadoDBStats);
+		
+		//Populate the Database Metrics
+		MSR_DATABASE.put("Collections", databaseStats.getCollections());
+		MSR_DATABASE.put("Objects", databaseStats.getObjects());
+		MSR_DATABASE.put("Data Size", databaseStats.getDataSize());
+		MSR_DATABASE.put("Storage Size", databaseStats.getStorageSize());
+		MSR_DATABASE.put("Extents", databaseStats.getNumExtents());
+		MSR_DATABASE.put("Indexes", databaseStats.getIndexes());
+		MSR_DATABASE.put("Index Size", databaseStats.getIndexSize());
+		MSR_DATABASE.put("File Size", databaseStats.getFileSize());
+		MSR_DATABASE.put("Namespace Size MB", databaseStats.getNsSizeMB());
+		
+		//Execute "replSetGetStatus" on the Mongo Server
+		//There is no need to create a Class just for this, we will only get ONE metric out of it.
+		//The metric is the State of the Mongo Replica Set
 		JSONObject replicaSetStats = new JSONObject(db.command("replSetGetStatus"));
 		
-		//STATUS DO REPLICA SET!
-		Collection<MonitorMeasure> medidas = env.getMonitorMeasures("Replica Set Status", "State");
-		for (MonitorMeasure medida : medidas) {
-			medida.setValue(getReplicaSetState(host, replicaSetStats));
-		}
-		
-		
-		for (String group : MEASURE_GROUPS){
-			log.warning(host + " - Processing metric group " + group);
-			switch (group) {
-			case "Connections":
+
+		Collection<MonitorMeasure> measures = env.getMonitorMeasures();
+			for (MonitorMeasure monitorMeasure : measures) {
 				
-				for (Map.Entry<String, String> entry : MSR_CONNECTIONS.entrySet()){
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						measure.setValue(resultadoServerStatus.getJSONObject("connections").getInt(entry.getValue()));
-						
+				String nomeMeasure = monitorMeasure.getMeasureName();
+				String nomeGrupo = monitorMeasure.getMetricGroupName();
+				Double valorAtual = 0.0;
+				
+				log.warning("Trying to get: " + nomeGrupo + " - " + nomeMeasure );
+
+				
+				try{
+				if(nomeGrupo.equals("Replication Operations") ||
+						nomeGrupo.equals("Operations") ){
+					
+					//Little aux variable to help identify "REPLICATION" vs "OPERATION"
+					String extra = "";
+					
+					if (nomeGrupo.equals("Replication Operations")){
+						extra = "_REPL";
 					}
-				    
+
+					valorAtual = calculateDifference(nomeMeasure, MSR_SERVER.get(nomeMeasure), host+extra);
+					monitorMeasure.setValue(valorAtual);
+
 				}
-				break;
-			case "Memoria":
-				for (Map.Entry<String, String> entry : MSR_MEMORIA.entrySet()){
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						measure.setValue(resultadoServerStatus.getJSONObject("mem").getInt(entry.getValue()));
-					}
+				else if (nomeGrupo.equals("Database Status")){	
+					valorAtual = MSR_DATABASE.get(nomeMeasure);
+					monitorMeasure.setValue(valorAtual);
+					
 				}
-				break;
-			case "Operations":
-				for (Map.Entry<String, String> entry : MSR_OPERATIONS.entrySet()){
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						int valor = resultadoServerStatus.getJSONObject("opcounters").getInt(entry.getValue());
-						long unsignedValor = valor & 0x00000000ffffffffL;
+				
+				//Replica Set Status
+				else if (nomeGrupo.equals("Replica Set Status")){	
+					
+					valorAtual = Double.valueOf(getReplicaSetState(host, replicaSetStats));
+					monitorMeasure.setValue(valorAtual);
+				}
+				
+				else{
+					
+					valorAtual = MSR_SERVER.get(monitorMeasure.getMeasureName());
+					monitorMeasure.setValue(valorAtual);
+					
+				}
+				
+				}catch(Exception e){
+					log.severe("Issue setting Metrics - " + e.getMessage());
+					throw e;
+				}
+				//log.warning("Setting: " + nomeGrupo + " - "+ nomeMeasure + " to: " + valorAtual);
 		
-						measure.setValue(calculateDifference(entry.getKey(), Double.valueOf(unsignedValor), host));
-					}
-				}
-				break;
-			case "Replication Operations":
-				for (Map.Entry<String, String> entry : MSR_OPERATIONS_REPL.entrySet()){
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						int valor = resultadoServerStatus.getJSONObject("opcountersRepl").getInt(entry.getValue());
-						long unsignedValor = valor & 0x00000000ffffffffL;
-						
-						measure.setValue(calculateDifference(entry.getKey(), Double.valueOf(unsignedValor), host+"_REPL"));
-					}
-				}
-				break;
-			case "Database Status":
-				for (Map.Entry<String, String> entry : MSR_DATABASE_STATUS.entrySet()){
-
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						long valor = resultadoDBStats.getInt(entry.getValue());
-						measure.setValue(valor);
-					}
-				}
-				break;
-			case "Network":
-				for (Map.Entry<String, String> entry : MSR_NETWORK.entrySet()){
-					Collection<MonitorMeasure> measures = env.getMonitorMeasures(group, entry.getKey());
-					for (MonitorMeasure measure : measures) {
-						Double valor = resultadoServerStatus.getJSONObject("network").getDouble(entry.getValue());
-						if (entry.getValue() == "bytesIn" || entry.getValue() == "bytesOut"){
-							valor = valor / 60.0;		
-						}
-						measure.setValue(calculateDifference(entry.getKey(), valor, host));
-					}
-				}
-				break;
-
-			default:
-				break;
-			}	
 		}
-		
-		/*
-		Collection<MonitorMeasure> monitorMeasures = env.getMonitorMeasures("mymetricgroup", "mymetric");
-		for (MonitorMeasure subscribedMonitorMeasure : monitorMeasures) {
-
-			//this will book to the monitor measure
-			subscribedMonitorMeasure.setValue(42);
-
-			//for this subscribed measure we want to create a dynamic measure
-			MonitorMeasure dynamicMeasure = env.createDynamicMeasure(subscribedMonitorMeasure, "Queue Name", "Queue 1");
-			dynamicMeasure.setValue(24);
-
-			//now we create another one for a different queue name
-			dynamicMeasure = env.createDynamicMeasure(subscribedMonitorMeasure, "Queue Name", "Queue 2");
-			dynamicMeasure.setValue(32);
-
-
-		}
-		*/
-		
-
-		
-
-		
-		//com.cnova.mongodb.monitor.connection
 		
 		connectionAdmin.closeConnection();
 		return new Status(Status.StatusCode.Success);
@@ -240,34 +190,10 @@ public class MongoDBMonitor implements Monitor {
              mongoClient.close();
          }
 	}
-	 
-    public DB connectToAdminDB(MongoCredential adminCredentials, MongoClientOptions options) {
-        try {
-        	if(options != null) {
-        		mongoClient = new MongoClient(new ServerAddress(host, port), options);
-        	} else {
-        		mongoClient = new MongoClient(host, port);
-        	}
-        	
-        } catch (UnknownHostException e) {
-        	
-            String msg = String.format("Unable to connect to mongodb; host=%s, port=%s",host , port);
-            log.severe(msg);
-            throw new RuntimeException(msg, e);
-        }
 
-        DB db = mongoClient.getDB(adminCredentials.getSource());
-        
-        boolean authenticated = db.authenticate(adminCredentials.getUserName(), adminCredentials.getPassword());
-        if(!authenticated) {
-        	String msg = String.format("Unable to authenticate with the db %s, user=%s, using password ****",
-                    adminCredentials.getSource(), adminCredentials.getUserName());
-        	log.severe(msg);
-            throw new RuntimeException(msg);
-        }
-        return db;
-    }
     public double calculateDifference(String metric, double current, String identifier) throws Exception{
+    	
+    	//Dealing with CUMULATIVE METRICS
     	File yourFile = new File(metric +"_"+ identifier + ".txt");
     	double actual = 0;
     	double previous = 0;
@@ -303,14 +229,18 @@ public class MongoDBMonitor implements Monitor {
 	
 					
 				} catch (Exception e) {
-				
+					if (connectionAdmin != null){
+						connectionAdmin.closeConnection();
+					}
 					previous = current;
 					log.severe(host + " ERRO no calculo de diferenca! " + metric + " " + identifier);
+					
 					log.log(Level.SEVERE, e.getMessage(), e);
 					e.printStackTrace();
 					leitura.close();
 					throw e;
 				}
+
 			}else{
 				previous = current;
 				
@@ -334,6 +264,9 @@ public class MongoDBMonitor implements Monitor {
 			bw.close();
 			
 		}catch (Exception e){
+			if (connectionAdmin != null){
+				connectionAdmin.closeConnection();
+			}
 			e.printStackTrace();
 			log.severe("\nPREVIOUS: " + previous +" \nCURRENT: " +current+ "\nACTUAL: " + actual );
 			log.severe(host);

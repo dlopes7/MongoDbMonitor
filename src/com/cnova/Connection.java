@@ -1,10 +1,12 @@
 package com.cnova;
 
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
 
 
 public class Connection {
@@ -24,6 +26,7 @@ public class Connection {
 		this.port = port;
 		this.collection = collection;
 		
+		
 		this.cred = MongoCredential.createCredential(
                 this.user,
                 this.collection,
@@ -33,7 +36,9 @@ public class Connection {
     public DB connectToAdminDB() {
     	
         try {
-        	mongoClient = new MongoClient(host, port);
+        	mongoClient = new MongoClient( new ServerAddress(host, port), Arrays.asList(cred));
+        	
+        	//MongoClient mongoClient = new MongoClient(new ServerAddress(), Arrays.asList(credential));
         
         } catch (UnknownHostException e) {
             String msg = String.format("Unable to connect to mongodb; host=%s, port=%s",host , port);
@@ -42,15 +47,7 @@ public class Connection {
         }
 
         DB db = mongoClient.getDB(cred.getSource());
-        
-        boolean authenticated = db.authenticate(cred.getUserName(), cred.getPassword());
-        
-        if(!authenticated) {
-        	String msg = String.format("Unable to authenticate with the db %s, user=%s, using password ****",
-                    cred.getSource(), cred.getUserName());
-        	System.out.println(msg);
-            throw new RuntimeException(msg);
-        }
+
         return db;
     } 
     public void closeConnection(){
