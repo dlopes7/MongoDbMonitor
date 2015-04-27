@@ -144,11 +144,13 @@ public class MongoDBMonitor implements Monitor {
 					
 					//Little aux variable to help identify "REPLICATION" vs "OPERATION"
 					String extra = "";
+					Double valor = MSR_SERVER.get(nomeMeasure);
 					
 					if (nomeGrupo.equals("Replication Operations")){
 						extra = "_REPL";
+						valor = MSR_SERVER.get(nomeMeasure + " Replications");
 					}
-					valorAtual = calculateDifference(nomeMeasure, MSR_SERVER.get(nomeMeasure), host+extra);
+					valorAtual = calculateDifference(nomeMeasure, valor, host+extra);
 					monitorMeasure.setValue(valorAtual);
 				}
 				else if (nomeGrupo.equals("Database Status")){	
