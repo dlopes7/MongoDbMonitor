@@ -139,7 +139,8 @@ public class MongoDBMonitor implements Monitor {
 				
 				try{
 				if(nomeGrupo.equals("Replication Operations") ||
-						nomeGrupo.equals("Operations") ){
+						nomeGrupo.equals("Operations") ||
+						nomeMeasure.contains("Bytes")){
 					
 					//Little aux variable to help identify "REPLICATION" vs "OPERATION"
 					String extra = "";
@@ -147,24 +148,19 @@ public class MongoDBMonitor implements Monitor {
 					if (nomeGrupo.equals("Replication Operations")){
 						extra = "_REPL";
 					}
-
 					valorAtual = calculateDifference(nomeMeasure, MSR_SERVER.get(nomeMeasure), host+extra);
 					monitorMeasure.setValue(valorAtual);
-
 				}
 				else if (nomeGrupo.equals("Database Status")){	
 					valorAtual = MSR_DATABASE.get(nomeMeasure);
 					monitorMeasure.setValue(valorAtual);
-					
 				}
-				
 				//Replica Set Status
 				else if (nomeGrupo.equals("Replica Set Status")){	
 					
 					valorAtual = Double.valueOf(getReplicaSetState(host, replicaSetStats));
 					monitorMeasure.setValue(valorAtual);
 				}
-				
 				else{
 					
 					valorAtual = MSR_SERVER.get(monitorMeasure.getMeasureName());
@@ -252,7 +248,6 @@ public class MongoDBMonitor implements Monitor {
 				//Algo errado aqui, o valor atual é menor que o anterior, descarto o ponto
 				actual = 0;
 			}
-
 
 			leitura.close();
 			
